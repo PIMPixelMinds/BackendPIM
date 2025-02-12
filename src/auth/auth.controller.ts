@@ -1,10 +1,13 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req, Res, UnauthorizedException, Put, NotFoundException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req, Res, UnauthorizedException, Put, NotFoundException, Request } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { SignUpDto } from './dto/signUp.dto';
 import { LoginDto } from './dto/login.dto';
 import { ForgotPasswordDto } from './dto/forgot-password.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { VerifyCodeDto } from './dto/verifyCode.dto';
+import { JwtAuthGuard } from './jwt-auth.guard';
+import { EditProfileDto } from './dto/edit-profile.dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 
 @Controller('auth')
 export class AuthController {
@@ -65,6 +68,26 @@ export class AuthController {
   @Put('reset-password/:email')
   async resetPassword(@Param('email') email: string, @Body() changePasswordDto: ResetPasswordDto): Promise<void> {
     return this.authService.changePassword(email, changePasswordDto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('profile')
+  getProfile(@Request() req) {
+    return this.authService.getProfile(req.user);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('update-profile')
+  async updateProfile(@Request() req, @Body() editProfileDto: EditProfileDto): Promise<{ user }> {
+    const userId = req.user.userId;
+    return this.authService.updateProfile(userId, editProfileDto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Put('change-password')
+  async changePassword(@Request() req, @Body() changePasswordDto: ChangePasswordDto): Promise<{ user }> {
+    const userId = req.user.userId;
+    return this.authService.updatePassword(userId, changePasswordDto);
   }
 
 }

@@ -18,7 +18,7 @@ export class JwtAuthGuard implements CanActivate {
             request.user = payload;
 
             const newToken = this.jwtService.sign(
-                { fullName: payload.fullName, email: payload.email, gender: payload.gender, birthday: payload.birthday },
+                {_id: payload.userId ,fullName: payload.fullName, email: payload.email, gender: payload.gender, birthday: payload.birthday },
                 { expiresIn: '5m' }
             );
 

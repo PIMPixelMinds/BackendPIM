@@ -22,6 +22,9 @@ export class User {
     @Prop({ type: String, enum: ["male","female"] })
     gender: string
 
+    @Prop()
+    phone: number
+
 }
 
 export const UserSchema = SchemaFactory.createForClass(User)

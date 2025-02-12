@@ -15,12 +15,16 @@ export class SignUpDto {
     @MinLength(6)
     password: string;
 
-    @IsNotEmpty()
+    @IsOptional()
     @IsDate()
-    birthday: Date
+    birthday?: Date
 
-    @IsNotEmpty()
+    @IsOptional()
     @IsBoolean()
-    gender: boolean
+    gender?: boolean
+
+    @IsOptional()
+    @IsNumber()
+    phone?: number
 
 }
