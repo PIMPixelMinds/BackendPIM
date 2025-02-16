@@ -25,6 +25,9 @@ export class User {
     @Prop()
     phone: number
 
+    @Prop()
+    profileCompleted: boolean
+
 }
 
 export const UserSchema = SchemaFactory.createForClass(User)

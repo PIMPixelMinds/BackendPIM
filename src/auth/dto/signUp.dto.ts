@@ -27,4 +27,9 @@ export class SignUpDto {
     @IsNumber()
     phone?: number
 
+    @IsOptional()
+    @IsNumber()
+    profileCompleted?: boolean
+
+
 }

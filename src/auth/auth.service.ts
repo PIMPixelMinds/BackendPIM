@@ -25,13 +25,14 @@ export class AuthService {
   ) { }
 
   async signUp(signUpDto: SignUpDto): Promise<{ user }> {
-    const { fullName, email, birthday, password, gender } = signUpDto;
+    const { fullName, email, birthday, password, gender, profileCompleted } = signUpDto;
 
     const existingUser = await this.userModel.findOne({ email });
     if (existingUser) {
       throw new ConflictException('Email is already registered');
     }
 
+    const initializedProfileCompleted = profileCompleted ?? false;
     const hashedPassword = await bcrypt.hash(password, 10);
 
     const user = await this.userModel.create({
@@ -39,7 +40,8 @@ export class AuthService {
       email,
       birthday,
       password: hashedPassword,
-      gender: gender ? "male" : "female"
+      gender: gender ? "male" : "female",
+      profileCompleted: initializedProfileCompleted
     });
 
 
