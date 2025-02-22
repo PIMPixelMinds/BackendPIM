@@ -14,6 +14,7 @@ export class AuthController {
   jwtService: any;
   constructor(private readonly authService: AuthService) { }
 
+  
   @Post('/signup')
   signUp(@Body() SignUpDto: SignUpDto) {
     return this.authService.signUp(SignUpDto);
