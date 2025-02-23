@@ -28,8 +28,22 @@ export class SignUpDto {
     phone?: number
 
     @IsOptional()
-    @IsNumber()
+    @IsBoolean()
     profileCompleted?: boolean
+    
+    @IsOptional()
+    @IsString()
+    careGiverEmail?: string
 
+    @IsOptional()
+    @IsBoolean()
+    diagnosis?: string
 
+    @IsOptional()
+    @IsBoolean()
+    type?: boolean
+
+    @IsOptional()
+    @IsString()
+    medicalReport?: string
 }

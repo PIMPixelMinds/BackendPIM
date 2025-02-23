@@ -17,4 +17,20 @@ export class EditProfileDto {
     @IsOptional()
     @IsBoolean()
     newGender: boolean;
+
+    @IsOptional()
+    @IsNumber()
+    newPhone: number;
+
+    @IsOptional()
+    @IsEmail()
+    newCareGiverEmail: string;
+
+    @IsOptional()
+    @IsEmail()
+    newDiagnosis: string;
+
+    @IsOptional()
+    @IsString()
+    newMedicalReport: string
 }

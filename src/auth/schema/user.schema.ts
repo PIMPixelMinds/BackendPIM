@@ -26,6 +26,18 @@ export class User {
     phone: number
 
     @Prop()
+    careGiverEmail: String
+
+    @Prop()
+    diagnosis: String
+
+    @Prop()
+    type: boolean
+
+    @Prop()
+    medicalReport: String
+
+    @Prop()
     profileCompleted: boolean
 
 }

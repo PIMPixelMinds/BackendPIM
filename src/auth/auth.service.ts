@@ -25,7 +25,7 @@ export class AuthService {
   ) { }
 
   async signUp(signUpDto: SignUpDto): Promise<{ user }> {
-    const { fullName, email, birthday, password, gender, profileCompleted } = signUpDto;
+    const { fullName, email, birthday, password, gender, phone, profileCompleted, careGiverEmail, diagnosis, type, medicalReport } = signUpDto;
 
     const existingUser = await this.userModel.findOne({ email });
     if (existingUser) {
@@ -34,16 +34,26 @@ export class AuthService {
 
     const initializedProfileCompleted = profileCompleted ?? false;
     const hashedPassword = await bcrypt.hash(password, 10);
+    const initializedType = type ?? false;
+    const initializedBirthday = birthday ?? "2000-02-20";
+    const initializedPhone = phone ?? 10000000;
+    const initializedCareGiverEmail = careGiverEmail ?? "";
+    const initializedDiagnosis = diagnosis ?? "";
+
 
     const user = await this.userModel.create({
       fullName,
       email,
-      birthday,
+      birthday: initializedBirthday,
       password: hashedPassword,
       gender: gender ? "male" : "female",
-      profileCompleted: initializedProfileCompleted
+      phone: initializedPhone,
+      profileCompleted: initializedProfileCompleted,
+      careGiverEmail: initializedCareGiverEmail,
+      diagnosis: initializedDiagnosis,
+      type: initializedType,
+      medicalReport
     });
-
 
     return { user }
 
@@ -145,7 +155,7 @@ export class AuthService {
   }
 
   async updateProfile(id: string, editProfileDto: EditProfileDto): Promise<{ user }> {
-    const { newName, newEmail, newBirthday, newGender } = editProfileDto;
+    const { newName, newEmail, newBirthday, newGender, newPhone, newCareGiverEmail, newDiagnosis, newMedicalReport } = editProfileDto;
 
     const findUser = await this.userModel.findById(id);
 
@@ -153,7 +163,7 @@ export class AuthService {
       throw new NotFoundException('User not found');
     }
 
-    if(newName == findUser.fullName) {
+    if (newName == findUser.fullName) {
       throw new BadRequestException('That is already your Full Name');
     }
 
@@ -176,6 +186,18 @@ export class AuthService {
     }
     if (newGender) {
       updateData.gender = newGender;
+    }
+    if (newPhone) {
+      updateData.phone = newPhone;
+    }
+    if (newCareGiverEmail) {
+      updateData.careGiverEmail = newCareGiverEmail;
+    }
+    if (newDiagnosis) {
+      updateData.diagnosis = newDiagnosis;
+    }
+    if (newMedicalReport) {
+      updateData.medicalReport = newMedicalReport;
     }
 
     const updatedUser = await this.userModel.findOneAndUpdate(

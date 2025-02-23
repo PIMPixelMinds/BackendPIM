@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req, Res, UnauthorizedException, Put, NotFoundException, Request } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req, Res, UnauthorizedException, Put, NotFoundException, Request, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { SignUpDto } from './dto/signUp.dto';
 import { LoginDto } from './dto/login.dto';
@@ -8,14 +8,32 @@ import { VerifyCodeDto } from './dto/verifyCode.dto';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { EditProfileDto } from './dto/edit-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
+import { FileUploadService } from './fileUpload.service';
+import { FileInterceptor } from '@nestjs/platform-express';
 
 @Controller('auth')
 export class AuthController {
   jwtService: any;
-  constructor(private readonly authService: AuthService) { }
+  constructor(
+    private readonly authService: AuthService
+  ) { }
 
   @Post('/signup')
-  signUp(@Body() SignUpDto: SignUpDto) {
+  @UseInterceptors(FileInterceptor('contentFile', FileUploadService.multerOptions))
+  signUp(@Body() SignUpDto: SignUpDto, @UploadedFile() file?: Express.Multer.File) {
+
+    if (file) {
+      let filePath = '';
+      if (file.mimetype.startsWith('image/')) {
+        filePath = `uploads/images/${file.filename}`;
+      } else {
+        filePath = `uploads/documents/${file.filename}`;
+      }
+      SignUpDto.medicalReport = filePath;
+    } else {
+      SignUpDto.medicalReport = "";
+    }
+
     return this.authService.signUp(SignUpDto);
   }
 
@@ -78,7 +96,17 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Put('update-profile')
-  async updateProfile(@Request() req, @Body() editProfileDto: EditProfileDto): Promise<{ user }> {
+  @UseInterceptors(FileInterceptor('newMedicalReport', FileUploadService.multerOptions))
+  async updateProfile(@Request() req, @Body() editProfileDto: EditProfileDto, @UploadedFile() file?: Express.Multer.File): Promise<{ user }> {
+    if (file) {
+      let filePath = '';
+      if (file.mimetype.startsWith('image/')) {
+        filePath = `uploads/images/${file.filename}`;
+      } else {
+        filePath = `uploads/documents/${file.filename}`;
+      }
+      editProfileDto.newMedicalReport = filePath;
+    }
     const userId = req.user.userId;
     return this.authService.updateProfile(userId, editProfileDto);
   }
