@@ -18,6 +18,7 @@ export class AuthController {
     private readonly authService: AuthService
   ) { }
 
+  
   @Post('/signup')
   @UseInterceptors(FileInterceptor('contentFile', FileUploadService.multerOptions))
   signUp(@Body() SignUpDto: SignUpDto, @UploadedFile() file?: Express.Multer.File) {
