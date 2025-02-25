@@ -5,6 +5,7 @@ import { AuthModule } from './auth/auth.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MongooseModule } from '@nestjs/mongoose';
 import { NewsModule } from './news/news.module';
+import { MedicationModule } from './medication/medication.module';
 
 @Module({
   imports: [
@@ -29,7 +30,8 @@ import { NewsModule } from './news/news.module';
       },
     }),
     AuthModule,
-    NewsModule
+    NewsModule,
+    MedicationModule
   ],
   controllers: [AppController],
   providers: [AppService],
