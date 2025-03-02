@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete, UseGuards, Req, Res, UnauthorizedException, Put, NotFoundException, Request, UseInterceptors, UploadedFile } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, UseGuards, Req, Res, UnauthorizedException, Put, NotFoundException, Request, UseInterceptors, UploadedFile } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { SignUpDto } from './dto/signUp.dto';
 import { LoginDto } from './dto/login.dto';
@@ -10,6 +10,7 @@ import { EditProfileDto } from './dto/edit-profile.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { FileUploadService } from './fileUpload.service';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { GoogleOAuthGuard } from './Google/google-auth.guard';
 
 @Controller('auth')
 export class AuthController {
@@ -38,29 +39,28 @@ export class AuthController {
     return this.authService.signUp(SignUpDto);
   }
 
-  @Post('/login')
-  login(@Body() loginDto: LoginDto) {
-    return this.authService.login(loginDto);
+  @Post('login')
+async login(@Body() loginDto: LoginDto, @Res() res) {
+  const { accessToken, refreshToken } = await this.authService.login(loginDto.email, loginDto.password);
+  res.setHeader('Authorization', `Bearer ${accessToken}`);
+  res.json({ token: accessToken, refreshToken });
+}
+
+@Post('refresh-token')
+async refreshToken(@Req() req, @Res() res) {
+  const refreshToken = req.headers['authorization']?.split(' ')[1]; // Extract refresh token
+  if (!refreshToken) {
+    throw new UnauthorizedException('Refresh token missing');
   }
 
-  @Post('/refresh-token')
-  async refreshToken(@Req() request, @Res() response) {
-    const oldToken = request.headers['authorization']?.split(' ')[1]; // Extract token
-
-    if (!oldToken) {
-      throw new UnauthorizedException('Token missing');
-    }
-
-    try {
-      const decoded = this.jwtService.verify(oldToken);
-      const newToken = this.jwtService.sign({ userId: decoded.userId }, { expiresIn: '5m' });
-
-      response.setHeader('Authorization', `Bearer ${newToken}`);
-      return response.json({ token: newToken });
-    } catch (error) {
-      throw new UnauthorizedException('Invalid or expired token');
-    }
+  try {
+    const { payload, newAccessToken, newRefreshToken } = await this.authService.refreshToken(refreshToken);
+    res.setHeader('Authorization', `Bearer ${newAccessToken}`);
+    res.json({ token: newAccessToken, refreshToken: newRefreshToken });
+  } catch (error) {
+    throw new UnauthorizedException('Invalid or expired refresh token');
   }
+}
 
   @Post('/forgot-password')
   forgotPassword(@Body() forgotPassword: ForgotPasswordDto) {
@@ -118,5 +118,39 @@ export class AuthController {
     const userId = req.user.userId;
     return this.authService.updatePassword(userId, changePasswordDto);
   }
+
+  @Get('google')
+  @UseGuards(GoogleOAuthGuard)
+  googleAuth(@Req() req) {
+    // This endpoint initiates Google authentication
+    return { message: 'Google authentication initiated' };
+  }
+
+  @Get('google/redirect')
+  @UseGuards(GoogleOAuthGuard)
+  async googleAuthRedirect(@Req() req, @Res() res) {
+    if (!req.user) {
+      throw new UnauthorizedException('Google authentication failed');
+    }
+
+    const { payload, token } = await this.authService.googleLogin(req.user);
+    res.setHeader('Authorization', `Bearer ${token}`);
+    res.redirect(`http://localhost:3000?token=${token}`); // Redirect to your frontend with the token
+  }
+
+  @Post('google/login')
+async googleMobileLogin(@Body() body: { token: string }, @Res() res) {
+  const { token } = body;
+
+  if (!token) {
+    throw new UnauthorizedException('Google token is required');
+  }
+
+  const user = await this.authService.validateGoogleToken(token);
+  const { payload, token: jwtToken } = await this.authService.googleLogin(user);
+
+  res.setHeader('Authorization', `Bearer ${jwtToken}`);
+  res.json({ token: jwtToken });
+}
 
 }

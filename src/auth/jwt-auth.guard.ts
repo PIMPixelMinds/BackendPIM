@@ -15,13 +15,14 @@ export class JwtAuthGuard implements CanActivate {
 
         try {
             const payload = this.jwtService.verify(token);
+            // Injecter req.user avec le payload original
             request.user = payload;
 
+            // Générer un nouveau token si nécessaire (optionnel, selon vos besoins)
             const newToken = this.jwtService.sign(
-                {_id: payload.userId ,fullName: payload.fullName, email: payload.email, gender: payload.gender, birthday: payload.birthday },
+                { userId: payload.userId, fullName: payload.fullName, email: payload.email, gender: payload.gender, birthday: payload.birthday },
                 { expiresIn: '5m' }
             );
-
             request.newToken = newToken;
         } catch {
             throw new UnauthorizedException('Invalid or expired token');

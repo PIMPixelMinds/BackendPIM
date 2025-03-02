@@ -1,17 +1,29 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/mongoose';
-import { Model, Types } from 'mongoose';
-
+import { Model, Types, FilterQuery } from 'mongoose';
+import { addMonths, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfDay, endOfDay } from 'date-fns';
 import { CreateMedicationDto } from './dto/create-medication.dto';
 import { UpdateMedicationDto } from './dto/update-medication.dto';
-import { addMonths, startOfWeek, endOfWeek, startOfMonth, endOfMonth } from 'date-fns';
 import { Medication, MedicationDocument } from './schema/medication.schema';
+
+// Définir un type pour une requête MongoDB valide sur createdAt
+interface DateQuery {
+  $gte?: Date;
+  $lte?: Date;
+  $exists?: boolean;
+}
+
+// Exporter l'interface ExtendedMedicationDocument
+export interface ExtendedMedicationDocument extends MedicationDocument {
+  createdAt?: Date;
+  updatedAt?: Date;
+}
 
 @Injectable()
 export class MedicationService {
-  constructor(@InjectModel(Medication.name) private medicationModel: Model<MedicationDocument>) {}
+  constructor(@InjectModel(Medication.name) private medicationModel: Model<ExtendedMedicationDocument>) {}
 
-  async create(createMedicationDto: CreateMedicationDto, userId: string): Promise<MedicationDocument> {
+  async create(createMedicationDto: CreateMedicationDto, userId: string): Promise<ExtendedMedicationDocument> {
     const createdMedication = new this.medicationModel({
       ...createMedicationDto,
       userId: new Types.ObjectId(userId), // Ensure userId is converted to ObjectId
@@ -19,62 +31,71 @@ export class MedicationService {
     return createdMedication.save();
   }
 
-  async update(id: string, updateMedicationDto: UpdateMedicationDto): Promise<MedicationDocument | null> {
+  async update(id: string, updateMedicationDto: UpdateMedicationDto): Promise<ExtendedMedicationDocument | null> {
     return this.medicationModel
       .findByIdAndUpdate(id, updateMedicationDto, { new: true, runValidators: true, lean: true }) // lean: true for performance
       .exec();
   }
 
-  async findAll(userId: string): Promise<MedicationDocument[]> {
+  async findAll(userId: string): Promise<ExtendedMedicationDocument[]> {
     return this.medicationModel
       .find({ userId: new Types.ObjectId(userId) })
       .lean() // Use lean() for better performance when only data is needed
-      .exec() as unknown as MedicationDocument[]; // Cast to ensure type compatibility
+      .exec() as unknown as ExtendedMedicationDocument[]; // Cast to ensure type compatibility
   }
 
-  async findByScheduleRange(userId: string, filter: 'today' | 'week' | 'month'): Promise<MedicationDocument[]> {
+  async findByScheduleRange(userId: string, filter: 'today' | 'week' | 'month'): Promise<ExtendedMedicationDocument[]> {
     const now = new Date();
     const userObjectId = new Types.ObjectId(userId);
+
+    let dateQuery: FilterQuery<ExtendedMedicationDocument> = {
+      userId: userObjectId,
+      isActive: true,
+      createdAt: { $exists: true }, // Initialiser avec $exists pour vérifier que createdAt existe
+    };
+
+    // Utiliser startOfDay et endOfDay de date-fns pour filtrer par période
+    switch (filter.toLowerCase()) {
+      case 'today':
+        const startOfToday = startOfDay(now);
+        const endOfToday = endOfDay(now);
+        dateQuery.createdAt = { $gte: startOfToday, $lte: endOfToday };
+        break;
+      case 'week':
+        const startOfWeekDate = startOfWeek(now);
+        const endOfWeekDate = endOfWeek(now);
+        dateQuery.createdAt = { $gte: startOfWeekDate, $lte: endOfWeekDate };
+        break;
+      case 'month':
+        const startOfMonthDate = startOfMonth(now);
+        const endOfMonthDate = endOfMonth(now);
+        dateQuery.createdAt = { $gte: startOfMonthDate, $lte: endOfMonthDate };
+        break;
+      default:
+        throw new BadRequestException('Invalid filter option. Use "today", "week", or "month"');
+    }
+
     const medications = await this.medicationModel
-      .find({ userId: userObjectId, isActive: true })
-      .select('name amount unit duration capSize cause frequency schedule createdAt photoUrl userId isActive') // Select all fields
-      .lean() // Use lean() for performance
-      .exec();
+      .find(dateQuery)
+      .select('name amount unit duration capSize cause frequency schedule createdAt photoUrl userId isActive')
+      .lean()
+      .exec() as unknown as ExtendedMedicationDocument[];
 
-    return (medications as MedicationDocument[]).filter(medication => {
-      const { schedule, frequency, duration, createdAt } = medication;
-      // Check if createdAt is undefined and handle it (e.g., skip the medication or log an error)
-      if (!createdAt) {
-        console.warn('Skipping medication due to missing createdAt:', medication);
-        return false;
-      }
-      if (!this.isMedicationActive(now, duration, createdAt)) return false;
-
-      const isDue = this.isMedicationDue(now, schedule, frequency);
-      if (!isDue) return false;
-
-      switch (filter) {
-        case 'today':
-          return this.isDueToday(now, schedule, frequency);
-        case 'week':
-          return this.isDueThisWeek(now, schedule, frequency);
-        case 'month':
-          return this.isDueThisMonth(now, schedule, frequency);
-        default:
-          throw new Error('Invalid filter option');
-      }
+    // Filtrer les médicaments qui sont dûs en fonction de schedule, frequency, et duration
+    return medications.filter(medication => {
+      return this.isMedicationDue(now, medication.schedule, medication.frequency) &&
+             this.isMedicationActive(now, medication.duration, medication.createdAt);
     });
   }
 
   private isMedicationActive(now: Date, duration: string, createdAt: Date | undefined): boolean {
-    // Handle undefined createdAt (e.g., return false or throw an error)
     if (!createdAt) {
       console.warn('createdAt is undefined for medication with duration:', duration);
       return false; // Skip medications without a createdAt
     }
 
     if (duration === 'Ongoing') return true;
-    const durationMatch =duration.match(/(\d+)\s*(Month|Months)/);
+    const durationMatch = duration.match(/(\d+)\s*(Month|Months)/);
     if (!durationMatch) return false;
     const months = parseInt(durationMatch[1]);
     const endDate = addMonths(new Date(createdAt), months);
@@ -92,10 +113,8 @@ export class MedicationService {
       case 'Daily':
         return this.isScheduleMatch(now, schedule);
       case 'Weekly':
-        // Assume weekly medications are due on a specific day (e.g., Sunday for simplicity)
         return this.isScheduleMatch(now, schedule) && currentDay === 0; // Adjust based on your schedule logic
       case 'Monthly':
-        // Due on the same day of the month (e.g., 15th of each month)
         return this.isScheduleMatch(now, schedule) && currentDate === 15; // Adjust based on your schedule logic
       case 'As Needed':
         return false; // Default to false unless specified otherwise (user discretion)
@@ -146,11 +165,11 @@ export class MedicationService {
            now >= startOfMonthDate && now <= endOfMonthDate;
   }
 
-  async findOne(id: string): Promise<MedicationDocument | null> {
+  async findOne(id: string): Promise<ExtendedMedicationDocument | null> {
     return this.medicationModel
       .findById(id)
       .lean() // Use lean() for performance
-      .exec() as unknown as MedicationDocument | null; // Cast to ensure type compatibility
+      .exec() as unknown as ExtendedMedicationDocument | null; // Cast to ensure type compatibility
   }
 
   async remove(id: string): Promise<void> {

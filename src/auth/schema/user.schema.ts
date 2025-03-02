@@ -1,45 +1,54 @@
-import { Prop, Schema, SchemaFactory } from "@nestjs/mongoose";
-import { Types } from "mongoose";
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document } from 'mongoose';
 
 @Schema({
-    timestamps: true
+  timestamps: true, // Automatically adds createdAt and updatedAt fields
 })
+export class User extends Document {
+  @Prop({ required: true })
+  fullName: string;
 
-export class User {
+  @Prop({ required: true, unique: true })
+  email: string;
 
-    @Prop()
-    fullName: String
+  @Prop({ required: false })
+  password?: string; // Optional for Google users (no password needed)
 
-    @Prop({unique: [true, 'Duplicate email entered']})
-    email: String
+  @Prop({ required: false })
+  gender: string;
 
-    @Prop()
-    password: String
+  @Prop({ required: false })
+  birthday: Date;
 
-    @Prop()
-    birthday: Date
+  @Prop({ required: false })
+  phone: number;
 
-    @Prop({ type: String, enum: ["male","female"] })
-    gender: string
+  @Prop({ required: false, default: false })
+  profileCompleted: boolean;
 
-    @Prop()
-    phone: number
+  @Prop({ required: false })
+  careGiverEmail: string;
 
-    @Prop()
-    careGiverEmail: String
+  @Prop({ required: false })
+  diagnosis: string;
 
-    @Prop()
-    diagnosis: String
+  @Prop({ required: false, default: false })
+  type: boolean;
 
-    @Prop()
-    type: boolean
+  @Prop({ required: false })
+  medicalReport: string;
 
-    @Prop()
-    medicalReport: String
+  @Prop({ required: false, unique: true, index: true }) // Use index: true here
+  googleId?: string; // Google ID for Google-authenticated users
 
-    @Prop()
-    profileCompleted: boolean
+  @Prop({ required: false })
+  accessToken?: string; // Google access token for Google-authenticated users
 
+  @Prop({ required: false })
+  refreshToken?: string; // Google refresh token for Google-authenticated users
 }
 
-export const UserSchema = SchemaFactory.createForClass(User)
+export type UserDocument = User & Document;
+
+export const UserSchema = SchemaFactory.createForClass(User);
+
