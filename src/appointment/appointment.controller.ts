@@ -2,6 +2,7 @@ import { Controller, Get, Post, Body, Patch, Param, Delete, Request, UseGuards, 
 import { AppointmentService } from './appointment.service';
 import { AddAppointmentDto } from './dto/addAppointment.dto';
 import { EditAppointmentDto } from './dto/editAppointment.dto';
+import { Appointment } from './schema/appointment.entity';
 
 
 @Controller('appointment')
@@ -38,5 +39,10 @@ export class AppointmentController {
   countAppointments(){
     return this.appointmentService.countAppointments();
   }
+  @Get('completedAppointments')
+async getCompletedAppointments(): Promise<{ appointment: Appointment[] }> {
+  return this.appointmentService.getCompletedAppointments();
+}
+
 
 }

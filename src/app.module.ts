@@ -7,6 +7,7 @@ import { MongooseModule } from '@nestjs/mongoose';
 import { NewsModule } from './news/news.module';
 import { AppointmentModule } from './appointment/appointment.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { ActivityModule } from './activity/activity.module';
 
 @Module({
   imports: [
@@ -33,7 +34,8 @@ import { ScheduleModule } from '@nestjs/schedule';
     AuthModule,
     NewsModule,
     ScheduleModule.forRoot(),
-    AppointmentModule
+    AppointmentModule,
+    ActivityModule
   ],
   controllers: [AppController],
   providers: [AppService],

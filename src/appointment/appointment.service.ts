@@ -172,4 +172,15 @@ export class AppointmentService {
 
     return { message: "Upcoming Appointments : "+upcomingAppointments+" | Canceled Appointments : "+canceledAppointments+" | Completed Appointments : "+completedAppointments };
   }
+
+  async getCompletedAppointments(): Promise<{ appointment: Appointment[] }> {
+    const completedAppointments = await this.appointmentModel
+      .find({ status: "Completed" })
+      .sort({ createdAt: -1 }) // Sort by most recent
+      .limit(2); // Get only the latest 2
+  
+    return { appointment: completedAppointments };
+  }
+  
+  
 }
